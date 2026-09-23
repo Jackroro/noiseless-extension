@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Noiseless - 社交信息净化与逻辑透镜",
+  "version": "2.0.0",
+  "description": "基于私有 API Key 的推文高信噪比阅读辅助工具。提供信息柔性过滤、右键划词与基于原生 JSON 引擎的客观逻辑研判。",
+  "permissions": [
+    "storage",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.atria-asi.ai/*",
+    "https://open.bigmodel.cn/*",
+    "https://api.tavily.com/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

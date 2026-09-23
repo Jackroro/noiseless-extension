@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    :root { --bg: #F8FAFC; --border: #E2E8F0; --text: #1E293B; --primary: #0EA5E9; --glass: #FFFFFF; --prefix-bg: #F1F5F9; --prefix-color: #64748B; }
+    * { box-sizing: border-box; }
+    body { width: 360px; margin: 0; padding: 18px; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; }
+    
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .title-area { display: flex; align-items: center; gap: 8px; }
+    h1 { font-size: 16px; font-weight: 700; margin: 0; color: #0F172A; }
+    .badge { background: #E0F2FE; color: var(--primary); font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 700; letter-spacing: 0.5px; }
+    
+    .toggle { appearance: none; width: 42px; height: 22px; background: #CBD5E1; border-radius: 12px; cursor: pointer; position: relative; outline: none; transition: 0.25s ease; }
+    .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: 0.25s; }
+    .toggle:checked { background: linear-gradient(135deg, #38BDF8, #0284C7); }
+    .toggle:checked::after { transform: translateX(20px); }
+
+    .section { background: var(--glass); border: 1px solid var(--border); padding: 14px; border-radius: 14px; margin-bottom: 12px; box-shadow: 0 2px 6px -1px rgba(15, 23, 42, 0.04); }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    h2 { font-size: 13px; margin: 0; color: #334155; font-weight: 700; }
+
+    .input-row { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 8px; background: #fff; margin-bottom: 8px; overflow: hidden; transition: all 0.2s ease; }
+    .input-row:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12); }
+    .prefix-tag { display: flex; align-items: center; padding: 0 8px 0 10px; background: var(--prefix-bg); border-right: 1px solid var(--border); color: var(--prefix-color); font-size: 11.5px; font-weight: 600; min-width: 90px; }
+    .input-row input { flex: 1; border: none; outline: none; padding: 8px 10px; font-size: 12.5px; background: transparent; }
+    .eye-btn { display: flex; align-items: center; justify-content: center; width: 34px; background: none; border: none; cursor: pointer; color: #94A3B8; padding: 0; }
+    .eye-btn svg { width: 16px; height: 16px; stroke-width: 1.8; fill: none; stroke: currentColor; }
+
+    .single-input { width: 100%; padding: 8px 12px; font-size: 12.5px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .tag { background: #F1F5F9; border: 1px solid var(--border); padding: 3px 8px; border-radius: 6px; font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+    .tag-close { cursor: pointer; color: #94A3B8; font-weight: bold; }
+    
+    .hint { font-size: 11px; color: #94A3B8; margin-top: 6px; line-height: 1.45; }
+    .privacy-box { background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; }
+    .privacy-box input[type="checkbox"] { margin-top: 2px; cursor: pointer; }
+    .privacy-box label { font-size: 11px; color: #78350F; line-height: 1.5; cursor: pointer; }
+
+    .save-btn { width: 100%; padding: 10px 14px; background: linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 100%); color: #0369A1; border: 1px solid #7DD3FC; border-radius: 24px; font-weight: 700; font-size: 13.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.22s; outline: none; }
+    .save-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title-area"><span style="font-size: 22px;">🔍</span><h1>Noiseless</h1><span class="badge">V2.0</span></div>
+    <input type="checkbox" id="globalToggle" class="toggle" checked title="总开关">
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>大模型 API 配置</h2></div>
+    <div class="input-row"><span class="prefix-tag">Google API:</span><input type="password" id="apiKey" placeholder="Gemini 密钥 (推荐)"><button class="eye-btn" id="toggleEyeGemini"></button></div>
+    <div class="input-row"><span class="prefix-tag">Zhipu API:</span><input type="password" id="zhipuApiKey" placeholder="GLM-5.3 密钥"><button class="eye-btn" id="toggleEyeZhipu"></button></div>
+    <div class="input-row"><span class="prefix-tag">Atria API:</span><input type="password" id="atriaApiKey" placeholder="Atria 密钥"><button class="eye-btn" id="toggleEyeAtria"></button></div>
+    <div class="input-row" style="margin-bottom: 0;"><span class="prefix-tag">Tavily API:</span><input type="password" id="tavilyApiKey" placeholder="联网检索密钥 (选填)"><button class="eye-btn" id="toggleEyeTavily"></button></div>
+    <div class="hint">⚠️ 强烈建议使用新建的空项目API Key，勿绑定含有个人隐私数据的主账号，以免遭遇大模型平台误封风控。</div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>阅读降噪设定</h2></div>
+    <div style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:10px;">
+      <span>柔性折叠推特广告/推广内容</span>
+      <input type="checkbox" id="adFoldToggle" class="toggle" checked>
+    </div>
+    <input type="text" id="keywordInput" class="single-input" placeholder="输入屏蔽词，按 Enter 添加...">
+    <div class="tags" id="tagsContainer"></div>
+  </div>
+
+  <div class="privacy-box">
+    <input type="checkbox" id="privacyCheck">
+    <label for="privacyCheck">我已知晓并同意：推文文本及 API Key 仅保存在本地，研判时由浏览器直连大模型官方端点，扩展开发者不收集、不出售任何个人浏览数据。</label>
+  </div>
+
+  <button class="save-btn" id="saveBtn" disabled>应用并保存设定</button>
+
+  <script src="popup.js"></script>
+</body>
+</html>

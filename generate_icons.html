@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Noiseless (Logic Lens) 科技透明图标生成器</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      background: #0F172A;
+      color: #F8FAFC;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      text-align: center;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 6px;
+      font-weight: 800;
+      color: #38BDF8;
+    }
+    p {
+      color: #94A3B8;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    /* 棋盘格模拟纯透明背景 */
+    .preview-card {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 36px;
+      background-color: #1E293B;
+      background-image: 
+        linear-gradient(45deg, #334155 25%, transparent 25%), 
+        linear-gradient(-45deg, #334155 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #334155 75%), 
+        linear-gradient(-45deg, transparent 75%, #334155 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      border: 1px solid #475569;
+      padding: 36px 48px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      margin-bottom: 30px;
+    }
+    .item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .label {
+      font-size: 12px;
+      color: #94A3B8;
+      font-weight: 600;
+    }
+    canvas {
+      filter: drop-shadow(0 4px 10px rgba(14, 165, 233, 0.4));
+    }
+    .btn {
+      background: linear-gradient(135deg, #0284C7, #2563EB);
+      color: #FFFFFF;
+      border: none;
+      padding: 13px 36px;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(14, 165, 233, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      background: linear-gradient(135deg, #38BDF8, #0284C7);
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>✨ Noiseless 观点透镜 (Logic Lens) 图标生成器</h1>
+  <p>半透发光镜面 + 粗实科技描边 + 满幅占比，在任意背景下清晰醒目</p>
+
+  <div class="preview-card">
+    <div class="item">
+      <canvas id="c128" width="128" height="128"></canvas>
+      <span class="label">128 × 128 (商店大图)</span>
+    </div>
+    <div class="item">
+      <canvas id="c48" width="48" height="48"></canvas>
+      <span class="label">48 × 48 (扩展管理页)</span>
+    </div>
+    <div class="item">
+      <canvas id="c16" width="16" height="16"></canvas>
+      <span class="label">16 × 16 (顶栏小标)</span>
+    </div>
+  </div>
+
+  <div>
+    <button class="btn" id="downloadAll">一键生成并下载 3 个高饱和透明图标</button>
+  </div>
+
+  <script>
+    function drawTechSearchIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, size, size);
+
+      if (size === 16) {
+        ctx.save();
+        
+        // 1. 镜片半透明实心底色
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.65)';
+        ctx.beginPath();
+        ctx.arc(6.5, 6.5, 5.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. 粗描边高光外环
+        ctx.strokeStyle = '#38BDF8';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(6.5, 6.5, 5.2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 3. 镜柄（粗实饱满）
+        ctx.strokeStyle = '#0284C7';
+        ctx.lineWidth = 2.6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(10.5, 10.5);
+        ctx.lineTo(14.5, 14.5);
+        ctx.stroke();
+
+        // 4. 镜内纯白核心十字星芒
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(6, 3.5, 1.2, 6);
+        ctx.fillRect(3.5, 6, 6, 1.2);
+
+        ctx.restore();
+        return;
+      }
+
+      const s = size / 128;
+      ctx.save();
+
+      // 1. 镜片半透高质感底色
+      const glassGrad = ctx.createRadialGradient(50 * s, 48 * s, 5 * s, 52 * s, 50 * s, 42 * s);
+      glassGrad.addColorStop(0, 'rgba(56, 189, 248, 0.6)');
+      glassGrad.addColorStop(0.7, 'rgba(14, 165, 233, 0.4)');
+      glassGrad.addColorStop(1, 'rgba(2, 132, 199, 0.25)');
+
+      ctx.beginPath();
+      ctx.arc(52 * s, 50 * s, 40 * s, 0, Math.PI * 2);
+      ctx.fillStyle = glassGrad;
+      ctx.fill();
+
+      // 2. 镜框渐变高光环
+      const borderGrad = ctx.createLinearGradient(16 * s, 16 * s, 90 * s, 90 * s);
+      borderGrad.addColorStop(0, '#7DD3FC');
+      borderGrad.addColorStop(0.5, '#0EA5E9');
+      borderGrad.addColorStop(1, '#0284C7');
+
+      ctx.lineWidth = 12 * s;
+      ctx.strokeStyle = borderGrad;
+      ctx.beginPath();
+      ctx.arc(52 * s, 50 * s, 39 * s, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 3. 粗柄
+      const handleGrad = ctx.createLinearGradient(80 * s, 78 * s, 115 * s, 113 * s);
+      handleGrad.addColorStop(0, '#0EA5E9');
+      handleGrad.addColorStop(1, '#1D4ED8');
+
+      ctx.lineWidth = 14 * s;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = handleGrad;
+      ctx.beginPath();
+      ctx.moveTo(80 * s, 78 * s);
+      ctx.lineTo(112 * s, 110 * s);
+      ctx.stroke();
+
+      // 4. 镜内纯白透镜星芒
+      ctx.fillStyle = '#FFFFFF';
+      const starCenterX = 52 * s;
+      const starCenterY = 50 * s;
+      const starOuter = 21 * s;
+      const starInner = 5.5 * s;
+
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const radius = i % 2 === 0 ? starOuter : starInner;
+        const angle = (i * Math.PI) / 4;
+        const x = starCenterX + radius * Math.cos(angle);
+        const y = starCenterY + radius * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // 5. 镜面反光光弧
+      ctx.beginPath();
+      ctx.arc(52 * s, 50 * s, 30 * s, -Math.PI * 0.75, -Math.PI * 0.35);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = 4 * s;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    drawTechSearchIcon('c128', 128);
+    drawTechSearchIcon('c48', 48);
+    drawTechSearchIcon('c16', 16);
+
+    document.getElementById('downloadAll').onclick = () => {
+      const sizes = [16, 48, 128];
+      sizes.forEach((s, index) => {
+        setTimeout(() => {
+          const cvs = document.getElementById(`c${s}`);
+          const a = document.createElement('a');
+          a.download = `icon${s}.png`;
+          a.href = cvs.toDataURL('image/png');
+          a.click();
+        }, index * 150);
+      });
+    };
+  </script>
+</body>
+</html>
