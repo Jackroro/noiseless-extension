@@ -1,10 +1,3 @@
-chrome.runtime.onInstalled.addListener(() => {
-  // 清理之前已注册的右键菜单项
-  if (chrome.contextMenus) {
-    chrome.contextMenus.removeAll();
-  }
-});
-
 const decodeKey = (str) => {
   if (!str) return '';
   try { return decodeURIComponent(atob(str)); } catch(e) { return str; }
@@ -87,7 +80,10 @@ chrome.runtime.onConnect.addListener((port) => {
 
         const specifiedProvider = msg.specifiedProvider;
 
-        if (!apiKey && !zhipuApiKey && !atriaApiKey) { safePostMessage({ error: '请先在扩展面板中至少配置一个 API Key。' }); return; }
+        if (!apiKey && !zhipuApiKey && !atriaApiKey) { 
+          safePostMessage({ error: '请先在扩展面板中至少配置一个 API Key。' }); 
+          return; 
+        }
 
         if (msg.tweetId) {
           if (msg.forceRefresh && initialCache[msg.tweetId]) {
@@ -109,8 +105,14 @@ chrome.runtime.onConnect.addListener((port) => {
           const timeoutId = setTimeout(() => tavilyAbort.abort(), 6000);
           try {
             const tRes = await fetch('https://api.tavily.com/search', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ api_key: tavilyApiKey, query: `背景资料核实: ${msg.text.substring(0, 300)}`, search_depth: "basic", include_answer: false }),
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                api_key: tavilyApiKey, 
+                query: `背景资料核实: ${msg.text.substring(0, 300)}`, 
+                search_depth: "basic", 
+                include_answer: false 
+              }),
               signal: tavilyAbort.signal
             });
             clearTimeout(timeoutId);
@@ -121,7 +123,10 @@ chrome.runtime.onConnect.addListener((port) => {
                 referenceSources = tData.results.slice(0, 3).map(r => ({ title: r.title, url: r.url }));
               }
             }
-          } catch (e) { clearTimeout(timeoutId); console.warn("Tavily 跳过"); }
+          } catch (e) { 
+            clearTimeout(timeoutId); 
+            console.warn("Tavily 跳过"); 
+          }
         }
 
         const systemPrompt = `
@@ -176,7 +181,8 @@ chrome.runtime.onConnect.addListener((port) => {
           safePostMessage({ status: 'ai_analyzing', modelName: displayName });
           try {
             return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelCode}:streamGenerateContent?alt=sse`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
               body: JSON.stringify({
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 contents: [{ role: "user", parts: [{ text: finalUserText }] }],
@@ -184,8 +190,15 @@ chrome.runtime.onConnect.addListener((port) => {
                   maxOutputTokens: 2500,
                   responseMimeType: "application/json"
                 }
-              }), signal: abortController.signal
-            }).then(res => { if (res.ok) { activeProvider = 'gemini'; currentModelDisplayName = displayName; } return res; });
+              }), 
+              signal: abortController.signal
+            }).then(res => { 
+              if (res.ok) { 
+                activeProvider = 'gemini'; 
+                currentModelDisplayName = displayName; 
+              } 
+              return res; 
+            });
           } catch (e) { return null; }
         };
 
@@ -205,9 +218,17 @@ chrome.runtime.onConnect.addListener((port) => {
             }
             
             return await fetch(url, {
-              method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-              body: JSON.stringify(payload), signal: abortController.signal
-            }).then(res => { if (res.ok) { activeProvider = 'openai_compat'; currentModelDisplayName = displayName; } return res; });
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+              body: JSON.stringify(payload), 
+              signal: abortController.signal
+            }).then(res => { 
+              if (res.ok) { 
+                activeProvider = 'openai_compat'; 
+                currentModelDisplayName = displayName; 
+              } 
+              return res; 
+            });
           } catch (e) { return null; }
         };
 
@@ -229,7 +250,8 @@ chrome.runtime.onConnect.addListener((port) => {
         }
 
         if (!response || !response.ok) {
-          safePostMessage({ error: `请求失败 (状态码: ${response ? response.status : '网络中断'})\n请检查 API Key 额度或网络连通性。` }); return;
+          safePostMessage({ error: `请求失败 (状态码: ${response ? response.status : '网络中断'})\n请检查 API Key 额度或网络连通性。` }); 
+          return;
         }
 
         safePostMessage({ modelName: currentModelDisplayName });
@@ -263,7 +285,8 @@ chrome.runtime.onConnect.addListener((port) => {
                   if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
                     if (candidate.finishReason === 'SAFETY') {
                       safePostMessage({ error: '已触发大模型官方安全审查 (SAFETY)，研判被平台强制掐断。' });
-                      streamError = true; break;
+                      streamError = true; 
+                      break;
                     }
                   }
                   content = candidate?.content?.parts?.[0]?.text || '';

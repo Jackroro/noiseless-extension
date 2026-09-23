@@ -28,12 +28,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'analyze_from_context_menu' && request.text) {
-    toggleFactCheckPopup(null, request.text, document.body, "context_menu_" + Date.now(), new Date().toISOString());
-  }
-});
-
 function observeTweets() {
   const observer = new MutationObserver((mutations) => {
     if (!extensionEnabled) return; 
@@ -70,8 +64,13 @@ function foldTweetSpace(article, reason) {
   const cell = article.closest('[data-testid="cellInnerDiv"]') || article;
   if (cell.dataset.folded === 'true') return;
   cell.dataset.folded = 'true';
-  cell.dataset.oldOpacity = cell.style.opacity; cell.dataset.oldHeight = cell.style.height; cell.dataset.oldOverflow = cell.style.overflow;
-  cell.style.opacity = '0.25'; cell.style.height = '60px'; cell.style.overflow = 'hidden'; cell.style.cursor = 'pointer';
+  cell.dataset.oldOpacity = cell.style.opacity; 
+  cell.dataset.oldHeight = cell.style.height; 
+  cell.dataset.oldOverflow = cell.style.overflow;
+  cell.style.opacity = '0.25'; 
+  cell.style.height = '60px'; 
+  cell.style.overflow = 'hidden'; 
+  cell.style.cursor = 'pointer';
   cell.title = `🙈 扩展已柔性折叠: ${reason} (点击展开)`;
   const unfoldHandler = () => unfoldTweetSpace(article);
   cell.addEventListener('click', unfoldHandler, { once: true });
@@ -82,12 +81,17 @@ function unfoldTweetSpace(article) {
   const cell = article.closest('[data-testid="cellInnerDiv"]') || article;
   if (cell.dataset.folded !== 'true') return;
   cell.dataset.folded = 'false';
-  cell.style.opacity = cell.dataset.oldOpacity || ''; cell.style.height = cell.dataset.oldHeight || ''; cell.style.overflow = cell.dataset.oldOverflow || '';
-  cell.style.cursor = ''; cell.title = '';
+  cell.style.opacity = cell.dataset.oldOpacity || ''; 
+  cell.style.height = cell.dataset.oldHeight || ''; 
+  cell.style.overflow = cell.dataset.oldOverflow || '';
+  cell.style.cursor = ''; 
+  cell.title = '';
   if (cell._unfoldHandler) cell.removeEventListener('click', cell._unfoldHandler);
 }
 
-function sanitizeHtml(str) { return String(str||'').replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m])); }
+function sanitizeHtml(str) { 
+  return String(str || '').replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m])); 
+}
 
 function processTweet(article) {
   article.dataset.xProcessed = "true";
@@ -128,7 +132,8 @@ function injectActionBtn(article, cell, tweetId) {
   
   btn.addEventListener('mousedown', (e) => e.stopPropagation());
   btn.addEventListener('click', (e) => {
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault(); 
+    e.stopPropagation();
     let currentText = Array.from(textEls).map(el => el.innerText.trim()).join('\n');
     
     if (localSensitiveWords.some(w => currentText.includes(w))) {
@@ -269,7 +274,14 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
       return; 
     }
 
-    port.postMessage({ action: 'analyze', text: text, tweetId: tweetId, tweetTime: tweetTime, forceRefresh: isForce, specifiedProvider: specifiedProvider });
+    port.postMessage({ 
+      action: 'analyze', 
+      text: text, 
+      tweetId: tweetId, 
+      tweetTime: tweetTime, 
+      forceRefresh: isForce, 
+      specifiedProvider: specifiedProvider 
+    });
 
     port.onMessage.addListener((msg) => {
       if (!host.isConnected) { port.disconnect(); return; }
@@ -292,7 +304,8 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
       if (msg.error) {
         refreshBtn.classList.remove('spinning');
         contentEl.innerHTML = `<div style="padding:20px; color:#EF4444; background:rgba(239,68,68,0.08); border-radius:12px;">${sanitizeHtml(msg.error).replace(/\n/g, '<br/>')}</div>`;
-        qualityBadge.className = 'quality-badge level-low'; qualityBadge.innerText = '研判中止';
+        qualityBadge.className = 'quality-badge level-low'; 
+        qualityBadge.innerText = '研判中止';
         return;
       }
 
