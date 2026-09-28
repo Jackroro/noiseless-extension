@@ -114,21 +114,23 @@ function processTweet(article) {
   });
   if (blockHit) { foldTweetSpace(article, `命中屏蔽词 "${blockHit}"`); return; }
 
-  injectActionBtn(article, article.closest('[data-testid="cellInnerDiv"]') || article, currentTweetId);
+  injectActionBtn(article, article.closest('[data-testid="cellInnerDiv"]') || article, currentTweetId, rawText);
 }
 
-function injectActionBtn(article, cell, tweetId) {
+function injectActionBtn(article, cell, tweetId, rawText) {
   if (article.querySelector('.fact-check-btn-wrapper')) return true;
   const textEls = article.querySelectorAll('div[data-testid="tweetText"], div[lang][dir="auto"]');
   if (textEls.length === 0) return false;
+
+  const hasToolHint = /(github\.com|http:\/\/|https:\/\/|\.io|\.ai|\.app|\.dev|开源|架构|软件|工具|平台)/i.test(rawText);
 
   const wrapper = document.createElement('span');
   wrapper.className = 'fact-check-btn-wrapper';
   wrapper.style.cssText = `display: inline-flex; align-items: center; vertical-align: middle; margin-left: 8px; user-select: none; position: relative; z-index: 10;`;
 
   const btn = document.createElement('button');
-  btn.innerHTML = `🔍<span style="margin-left:3px; font-weight:600;">研判</span>`;
-  btn.style.cssText = `background: rgba(14,165,233,0.08); border: 1px solid rgba(14,165,233,0.25); color: #0EA5E9; padding: 0 8px; border-radius: 12px; font-size: 12px; cursor: pointer; height: 22px;`;
+  btn.innerHTML = hasToolHint ? `🛠️<span style="margin-left:3px; font-weight:600;">工具研判</span>` : `🔍<span style="margin-left:3px; font-weight:600;">研判</span>`;
+  btn.style.cssText = `background: ${hasToolHint ? 'rgba(16,185,129,0.08)' : 'rgba(14,165,233,0.08)'}; border: 1px solid ${hasToolHint ? 'rgba(16,185,129,0.28)' : 'rgba(14,165,233,0.25)'}; color: ${hasToolHint ? '#059669' : '#0EA5E9'}; padding: 0 8px; border-radius: 12px; font-size: 12px; cursor: pointer; height: 22px; transition: all 0.2s;`;
   
   btn.addEventListener('mousedown', (e) => e.stopPropagation());
   btn.addEventListener('click', (e) => {
@@ -162,7 +164,14 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
   host._anchorBtn = anchorBtn;
   host.style.cssText = `position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.65); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 2147483647;`;
   const shadow = host.attachShadow({ mode: 'open' });
-  host.addEventListener('click', () => { if (host._port) host._port.disconnect(); host.remove(); });
+  
+  // 仅在明确点击背景遮罩外部时才关闭，防止误触
+  host.addEventListener('click', (e) => {
+    if (e.target === host) {
+      if (host._port) host._port.disconnect();
+      host.remove();
+    }
+  });
 
   shadow.innerHTML = `
     <style>
@@ -197,12 +206,33 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
       .content { flex: 1; overflow-y: auto; padding-right: 8px; }
       .section-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; padding: 18px 22px; margin-bottom: 14px; }
       .section-card-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 15.5px; font-weight: 700; color: var(--title-color); margin-bottom: 12px; border-left: 3.5px solid #0EA5E9; padding-left: 8px; }
+      .section-card-title.tool-accent { border-left-color: #10B981; }
+      
       .title-text { display: inline-block; }
       .fact-item { display: flex; justify-content: space-between; padding: 10px; margin-bottom: 8px; background: rgba(148,163,184,0.04); border: 1px solid rgba(148,163,184,0.12); border-radius: 12px; font-size: 14px; }
       .prob-pill { font-size: 11.5px; font-weight: 700; color: #0284C7; background: rgba(14,165,233,0.12); padding: 2px 10px; border-radius: 12px; white-space: nowrap; }
-      .core-summary { background: rgba(14,165,233,0.06); color: #0284C7; padding: 8px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; margin-bottom: 12px; }
-      .loading { color: #0EA5E9; font-size: 14.5px; font-weight: 500; text-align: center; padding: 60px 0; animation: pulse 1.5s infinite; }
+      .prob-pill.green { color: #059669; background: rgba(16,185,129,0.12); }
+      .prob-pill.yellow { color: #D97706; background: rgba(245,158,11,0.12); }
+      .prob-pill.red { color: #DC2626; background: rgba(239,68,68,0.12); }
       
+      .core-summary { background: rgba(14,165,233,0.06); color: #0284C7; padding: 8px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; margin-bottom: 12px; }
+      .core-summary.green { background: rgba(16,185,129,0.08); color: #059669; }
+      
+      .tool-grid { display: flex; flex-direction: column; gap: 14px; }
+      .tool-item-card { background: rgba(148,163,184,0.03); border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 16px; }
+      .tool-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+      .tool-name-badge { display: flex; align-items: center; gap: 8px; }
+      .tool-name { font-size: 15px; font-weight: 700; color: var(--title-color); }
+      .tool-cat { font-size: 11px; padding: 2px 7px; border-radius: 8px; background: rgba(148,163,184,0.15); color: var(--text-sub); }
+      .pros-cons-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+      .pc-box { background: rgba(148,163,184,0.04); border-radius: 10px; padding: 10px 12px; }
+      .pc-box-title { font-size: 12.5px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+      .pc-box.pros .pc-box-title { color: #10B981; }
+      .pc-box.cons .pc-box-title { color: #F59E0B; }
+      .pc-list-item { font-size: 13px; line-height: 1.45; margin-bottom: 4px; color: var(--text-main); }
+      .verdict-box { margin-top: 10px; font-size: 12.5px; color: var(--text-sub); border-left: 2px solid #CBD5E1; padding-left: 8px; font-style: italic; }
+
+      .loading { color: #0EA5E9; font-size: 14.5px; font-weight: 500; text-align: center; padding: 60px 0; animation: pulse 1.5s infinite; }
       .tech-disclaimer { margin-top: 18px; padding: 14px 18px; border-radius: 14px; background: linear-gradient(135deg, rgba(148, 163, 184, 0.06) 0%, rgba(14, 165, 233, 0.04) 100%); border: 1px solid rgba(148, 163, 184, 0.18); display: flex; gap: 12px; font-size: 12.5px; color: var(--text-sub); }
       
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -297,9 +327,13 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
         }
       }
 
-      if (msg.status === 'tavily_searching') { if (loadingText) loadingText.innerHTML = `🌐 正在通过 Tavily 挂载全网事实参考系...`; return; }
-      if (msg.status === 'ai_analyzing') { if (loadingText) loadingText.innerHTML = `✨ ${msg.modelName || 'AI'} 结构化逻辑深潜中...`; return; }
-      if (msg.status === 'cached') { if (loadingText) loadingText.innerHTML = `⚡ 已命中本地结构化缓存...`; return; }
+      if (msg.status === 'tavily_searching') { if (loadingText) loadingText.innerHTML = `🌐 正在通过 Tavily 探查产品背景与全网评测...`; return; }
+      if (msg.status === 'ai_analyzing') { if (loadingText) loadingText.innerHTML = `✨ ${msg.modelName || 'AI'} 结构化逻辑与项目研判中...`; return; }
+      
+      // 关键修复：命中缓存时仅更新文字提示，不 return，继续向下走渲染流程
+      if (msg.status === 'cached') { 
+        if (loadingText) loadingText.innerHTML = `⚡ 已命中本地结构化缓存，正在加载...`; 
+      }
 
       if (msg.error) {
         refreshBtn.classList.remove('spinning');
@@ -317,6 +351,49 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
         qualityBadge.className = `quality-badge level-${q === '高' ? 'high' : q === '中' ? 'mid' : 'low'}`;
 
         let html = '';
+
+        // 提及产品/项目/软件客观验证
+        if (Array.isArray(data.product_eval) && data.product_eval.length > 0) {
+          let productsHtml = data.product_eval.map(p => {
+            const rawScore = parseInt(p.rating || '60', 10);
+            const pillColorClass = rawScore >= 75 ? 'green' : (rawScore >= 50 ? 'yellow' : 'red');
+            const prosList = (p.pros || []).map(item => `<div class="pc-list-item">✅ ${sanitizeHtml(item)}</div>`).join('');
+            const consList = (p.cons || []).map(item => `<div class="pc-list-item">⚠️ ${sanitizeHtml(item)}</div>`).join('');
+
+            return `
+              <div class="tool-item-card">
+                <div class="tool-header-row">
+                  <div class="tool-name-badge">
+                    <span class="tool-name">${sanitizeHtml(p.name)}</span>
+                    <span class="tool-cat">${sanitizeHtml(p.category || '工具')}</span>
+                  </div>
+                  <span class="prob-pill ${pillColorClass}">推荐指数: ${sanitizeHtml(p.rating)}</span>
+                </div>
+                <div class="core-summary green" style="margin-bottom:8px;">🎯 <b>核心作用：</b>${sanitizeHtml(p.utility)}</div>
+                <div class="pros-cons-container">
+                  <div class="pc-box pros">
+                    <div class="pc-box-title">优点 / 核心价值</div>
+                    ${prosList || '<div class="pc-list-item" style="color:var(--text-sub);">暂无突出优点总结</div>'}
+                  </div>
+                  <div class="pc-box cons">
+                    <div class="pc-box-title">缺点 / 局限性</div>
+                    ${consList || '<div class="pc-list-item" style="color:var(--text-sub);">暂无明显痛点</div>'}
+                  </div>
+                </div>
+                ${p.verdict ? `<div class="verdict-box">💬 研判简评：${sanitizeHtml(p.verdict)}</div>` : ''}
+              </div>
+            `;
+          }).join('');
+
+          html += `
+            <div class="section-card">
+              <div class="section-card-title tool-accent">
+                <span class="title-text">🛠️ 提及项目 / 软件 / 网站实测评估</span>
+              </div>
+              <div class="tool-grid">${productsHtml}</div>
+            </div>
+          `;
+        }
 
         // 一、事实可验证度
         let factItems = [];
@@ -408,7 +485,7 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
             <span style="font-size:16px;">ℹ️</span>
             <div>
               <div style="font-weight:700;margin-bottom:4px;">算法边界说明</div>
-              所有评分与百分比均为大型语言模型基于文本逻辑的概率推演，不代表绝对事实鉴定。内容仅供参考，不构成任何决策依据，请以官方信源与权威报道为准。
+              所有评分与百分比均为大型语言模型基于文本逻辑与联网评测的概率推演，不代表绝对事实鉴定。内容仅供参考，不构成任何决策依据，请以官方信源与权威报道为准。
             </div>
           </div>
         `;

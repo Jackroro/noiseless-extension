@@ -102,14 +102,25 @@ chrome.runtime.onConnect.addListener((port) => {
         if (tavilyApiKey) {
           safePostMessage({ status: 'tavily_searching' });
           const tavilyAbort = new AbortController();
-          const timeoutId = setTimeout(() => tavilyAbort.abort(), 6000);
+          const timeoutId = setTimeout(() => tavilyAbort.abort(), 6500);
+          
+          // 优化检索 Query：探查推文中包含的 URL、Github 仓库或核心词，引入口碑和踩坑评测
+          let targetedQuery = `背景资料与口碑评测: ${msg.text.substring(0, 180)}`;
+          const urlMatch = msg.text.match(/https?:\/\/[^\s]+/i);
+          const githubMatch = msg.text.match(/(?:github\.com\/)?([a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+)/i);
+          if (githubMatch) {
+            targetedQuery = `${githubMatch[1]} project review 优缺点 测评`;
+          } else if (urlMatch) {
+            targetedQuery = `${urlMatch[0]} 工具测评 review alternative`;
+          }
+
           try {
             const tRes = await fetch('https://api.tavily.com/search', {
               method: 'POST', 
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                 api_key: tavilyApiKey, 
-                query: `背景资料核实: ${msg.text.substring(0, 300)}`, 
+                query: targetedQuery, 
                 search_depth: "basic", 
                 include_answer: false 
               }),
@@ -119,7 +130,7 @@ chrome.runtime.onConnect.addListener((port) => {
             if (tRes.ok) {
               const tData = await tRes.json();
               if (tData.results && tData.results.length > 0) {
-                searchContext = "\n【Tavily实时检索结果作为背景参考】\n" + tData.results.map(r => `- ${r.title}:${r.content}`).join('\n');
+                searchContext = "\n【Tavily实时检索全网口碑与背景】\n" + tData.results.map(r => `- ${r.title}:${r.content}`).join('\n');
                 referenceSources = tData.results.slice(0, 3).map(r => ({ title: r.title, url: r.url }));
               }
             }
@@ -130,22 +141,34 @@ chrome.runtime.onConnect.addListener((port) => {
         }
 
         const systemPrompt = `
-你是一个极度理性的数据分析师。
-请严格以 JSON 格式对下方社交媒体文本进行客观的逻辑结构拆解。
+你是一个极度理性的数据分析师与全栈技术评测专家。
+请严格以 JSON 格式对下方社交媒体文本进行客观的逻辑结构拆解与潜在产品/工具研判。
 
 【强制约束】
 1. 你的回答必须是合法的纯 JSON 字符串，严禁输出任何 markdown 标记（如 \`\`\`json ），换行与引号须正确转义。
 2. 提取逻辑结构时，严禁复述原文中的违规或敏感词汇，采用中立学术概括。
-3. 所有 score 字段统一采用正向评估（1%-99%），数值越高代表品质越好、价值越高：
+3. 所有 score/rating 字段统一采用正向评估（1%-99%），数值越高代表品质越好、价值越高：
    - facts.score：客观事实占比/可验证度（无事实或纯感性时给 0%~15%）
    - logic.score：逻辑严密性（因果推导越严密越高）
    - feasibility.score：实践指导性与落地可行性
-   - noise.score：有效信息率（若全篇为鸡汤、情绪宣泄或营销广告，有效信息率应评为低分，如 5%~25%；若干货密集则评高分）
-4. 若原文为纯主观感性表达或情绪宣泄，facts.items 可为空，并在 facts.summary 中简要说明。
+   - noise.score：有效信息率（若全篇为鸡汤、情绪宣泄或营销广告给 5%~25%；若干货密集则给高分）
+   - product_eval[].rating：该项目/软件/网站的综合推荐使用度（基于其实用性、生态成熟度与替代品对比给出）
+4. 若原文未提及任何明确的【开源项目、网站、软件工具、SaaS服务、开发库或商业应用】，则 product_eval 必须设为 null。
 
 【JSON 结构要求】
 {
   "quality": "高|中|低",
+  "product_eval": [
+    {
+      "name": "项目/软件/网站名称",
+      "category": "开源项目|SaaS平台|开发框架|效率工具|AI应用|其他",
+      "utility": "一句话概括其核心用途与解决的具体痛点",
+      "pros": ["核心优势1", "优势2"],
+      "cons": ["局限性/潜在缺点/门槛1", "局限2"],
+      "rating": "XX%",
+      "verdict": "一句话推荐判定（如：适合个人尝鲜，企业级生产环境慎用）"
+    }
+  ] | null,
   "facts": {
     "score": "XX%",
     "summary": "一句话评估事实客观度或无事实说明",
@@ -187,7 +210,7 @@ chrome.runtime.onConnect.addListener((port) => {
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 contents: [{ role: "user", parts: [{ text: finalUserText }] }],
                 generationConfig: {
-                  maxOutputTokens: 2500,
+                  maxOutputTokens: 3000,
                   responseMimeType: "application/json"
                 }
               }), 
@@ -210,7 +233,7 @@ chrome.runtime.onConnect.addListener((port) => {
               model: modelCode,
               messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: finalUserText }],
               stream: true,
-              max_tokens: 2500,
+              max_tokens: 3000,
               temperature: 0.1
             };
             if (!isZhipu) {
