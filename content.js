@@ -23,7 +23,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (changes.adFoldEnabled) adFoldEnabled = changes.adFoldEnabled.newValue !== false;
     if (changes.keywords) blockKeywords = (changes.keywords.newValue || []).filter(k => k.trim().length > 0);
     if (extensionEnabled) {
-      scanAndProcessNewTweets();
+      scanAndProcessNewTweets(true); // 传入 true，强制重筛页面已有推文
     }
   }
 });
@@ -49,8 +49,11 @@ function observeTweets() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-function scanAndProcessNewTweets() {
-  document.querySelectorAll('article[role="article"]:not([data-x-processed="true"]), article[data-testid="tweet"]:not([data-x-processed="true"])').forEach(processTweet);
+function scanAndProcessNewTweets(forceRescan = false) {
+  const selector = forceRescan 
+    ? 'article[role="article"], article[data-testid="tweet"]' 
+    : 'article[role="article"]:not([data-x-processed="true"]), article[data-testid="tweet"]:not([data-x-processed="true"])';
+  document.querySelectorAll(selector).forEach(processTweet);
 }
 
 function getXTheme() {
@@ -62,31 +65,15 @@ function getXTheme() {
 
 function foldTweetSpace(article, reason) {
   const cell = article.closest('[data-testid="cellInnerDiv"]') || article;
-  if (cell.dataset.folded === 'true') return;
   cell.dataset.folded = 'true';
-  cell.dataset.oldOpacity = cell.style.opacity; 
-  cell.dataset.oldHeight = cell.style.height; 
-  cell.dataset.oldOverflow = cell.style.overflow;
-  cell.style.opacity = '0.25'; 
-  cell.style.height = '60px'; 
-  cell.style.overflow = 'hidden'; 
-  cell.style.cursor = 'pointer';
-  cell.title = `🙈 扩展已柔性折叠: ${reason} (点击展开)`;
-  const unfoldHandler = () => unfoldTweetSpace(article);
-  cell.addEventListener('click', unfoldHandler, { once: true });
-  cell._unfoldHandler = unfoldHandler;
+  cell.style.display = 'none'; // 彻底隐藏整条推文卡片容器
 }
 
 function unfoldTweetSpace(article) {
   const cell = article.closest('[data-testid="cellInnerDiv"]') || article;
   if (cell.dataset.folded !== 'true') return;
   cell.dataset.folded = 'false';
-  cell.style.opacity = cell.dataset.oldOpacity || ''; 
-  cell.style.height = cell.dataset.oldHeight || ''; 
-  cell.style.overflow = cell.dataset.oldOverflow || '';
-  cell.style.cursor = ''; 
-  cell.title = '';
-  if (cell._unfoldHandler) cell.removeEventListener('click', cell._unfoldHandler);
+  cell.style.display = ''; // 恢复展示
 }
 
 function sanitizeHtml(str) { 
@@ -129,7 +116,7 @@ function injectActionBtn(article, cell, tweetId, rawText) {
   wrapper.style.cssText = `display: inline-flex; align-items: center; vertical-align: middle; margin-left: 8px; user-select: none; position: relative; z-index: 10;`;
 
   const btn = document.createElement('button');
-  btn.innerHTML = hasToolHint ? `🛠️<span style="margin-left:3px; font-weight:600;">工具研判</span>` : `🔍<span style="margin-left:3px; font-weight:600;">研判</span>`;
+  btn.innerHTML = hasToolHint ? `🛠️️<span style="margin-left:3px; font-weight:600;">工具研判</span>` : `🔍<span style="margin-left:3px; font-weight:600;">研判</span>`;
   btn.style.cssText = `background: ${hasToolHint ? 'rgba(16,185,129,0.08)' : 'rgba(14,165,233,0.08)'}; border: 1px solid ${hasToolHint ? 'rgba(16,185,129,0.28)' : 'rgba(14,165,233,0.25)'}; color: ${hasToolHint ? '#059669' : '#0EA5E9'}; padding: 0 8px; border-radius: 12px; font-size: 12px; cursor: pointer; height: 22px; transition: all 0.2s;`;
   
   btn.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -165,7 +152,6 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
   host.style.cssText = `position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.65); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 2147483647;`;
   const shadow = host.attachShadow({ mode: 'open' });
   
-  // 仅在明确点击背景遮罩外部时才关闭，防止误触
   host.addEventListener('click', (e) => {
     if (e.target === host) {
       if (host._port) host._port.disconnect();
@@ -330,7 +316,6 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
       if (msg.status === 'tavily_searching') { if (loadingText) loadingText.innerHTML = `🌐 正在通过 Tavily 探查产品背景与全网评测...`; return; }
       if (msg.status === 'ai_analyzing') { if (loadingText) loadingText.innerHTML = `✨ ${msg.modelName || 'AI'} 结构化逻辑与项目研判中...`; return; }
       
-      // 关键修复：命中缓存时仅更新文字提示，不 return，继续向下走渲染流程
       if (msg.status === 'cached') { 
         if (loadingText) loadingText.innerHTML = `⚡ 已命中本地结构化缓存，正在加载...`; 
       }
@@ -352,7 +337,6 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
 
         let html = '';
 
-        // 提及产品/项目/软件客观验证
         if (Array.isArray(data.product_eval) && data.product_eval.length > 0) {
           let productsHtml = data.product_eval.map(p => {
             const rawScore = parseInt(p.rating || '60', 10);
@@ -395,7 +379,6 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
           `;
         }
 
-        // 一、事实可验证度
         let factItems = [];
         let factScore = '';
         let factSummary = '';
@@ -433,7 +416,6 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
           ${factsBodyHtml}
         </div>`;
 
-        // 二、论据充分与逻辑严密性
         if (data.logic) {
           let detailsHtml = (data.logic.details || []).map(d => `<div style="margin-bottom:6px; font-size:14px;">- ${sanitizeHtml(d)}</div>`).join('');
           let logicScoreHtml = data.logic.score ? `<span class="prob-pill">严密概率: ${sanitizeHtml(data.logic.score)}</span>` : '';
@@ -447,7 +429,6 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
           </div>`;
         }
 
-        // 三、实践可行性
         if (data.feasibility) {
           let detailsHtml = (data.feasibility.details || []).map(d => `<div style="margin-bottom:6px; font-size:14px;">- ${sanitizeHtml(d)}</div>`).join('');
           let feasScoreHtml = data.feasibility.score ? `<span class="prob-pill">可行概率: ${sanitizeHtml(data.feasibility.score)}</span>` : '';
@@ -461,7 +442,6 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
           </div>`;
         }
 
-        // 四、信噪比
         if (data.noise) {
           let noiseScoreHtml = data.noise.score ? `<span class="prob-pill">有效信息率: ${sanitizeHtml(data.noise.score)}</span>` : '';
           html += `<div class="section-card">
@@ -474,7 +454,6 @@ function toggleFactCheckPopup(anchorBtn, text, cell, tweetId, tweetTime) {
           </div>`;
         }
 
-        // 五、外部检索信源
         if (data.sources && data.sources.length > 0) {
           let linksHtml = data.sources.map(s => `<div style="margin-bottom:8px;"><a href="${sanitizeHtml(s.url)}" target="_blank" style="color:#0284C7; text-decoration:none; font-size:13.5px;">🔗 ${sanitizeHtml(s.title)}</a></div>`).join('');
           html += `<div class="section-card"><div class="section-card-title"><span class="title-text">五、外部检索信源</span></div>${linksHtml}</div>`;
