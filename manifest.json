@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Noiseless - 社交信息降噪与逻辑透镜",
-  "version": "3.0",
+  "version": "3.0.18",
   "description": "基于私有 API Key 的推文高信噪比阅读辅助工具。提供信息柔性过滤和基于原生 JSON 引擎的客观逻辑研判。",
   "permissions": [
     "storage"
